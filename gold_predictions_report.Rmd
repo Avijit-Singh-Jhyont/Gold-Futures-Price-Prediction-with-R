@@ -1,0 +1,88 @@
+---
+title: "Gold Futures Price Prediction Using ARIMA"
+author: "My Name"
+output: html_document
+date: "`r Sys.Date()`"
+---
+
+# Introduction
+This report analyses  the future prices of gold futures using an ARIMA model. The data is sourced from Yahoo Finance, covering the period from Jan 1st, 2010, to the present.
+
+
+## About the Packages
+In the analysis, we will be using several R packages to fetch and manipulate data, build the ARIMA model, and visualize the results. The following libraries are loaded to ensure these functionalities:
+```{r setup, include=FALSE}
+#Installing necessary packages if not already installed
+if(!require(quantmod)) install.packages("quantmod")
+if(!require(forecast)) install.packages("forecast")
+if(!require(ggplot2)) install.packages("ggplot2")
+if(!require(lubridate)) install.packages("lubridate")
+#Necessary Libraries
+library(quantmod)
+library(forecast)
+library(ggplot2)
+library(lubridate)
+
+```
+
+## About the Source Dataset
+We begin by collecting historical gold futures data from Yahoo Finance. The data spans from Jan 1st, 2010 to present. The data includes daily prices, but we are primarily interested in the adjusted close prices, which account for dividends and stock splits.
+Any missing values in the dataset are filled using linear interpolation to ensure the continuity of time series. The data is then converted into a time series object for further analysis.
+```{r data-collection}
+#Fetching historical Gold Futures data from Yahoo Finance; assigned to data frame `GC=F`
+getSymbols("GC=F",src="yahoo",from="2010-01-01",to=Sys.Date(),auto.assign = TRUE)
+
+#Extracting Adjusted Prices in form of 'GC=F.Adjusted' col from GC-F
+gold_prices <- `GC=F`[,"GC=F.Adjusted"]
+
+#To fill in any missing data in the source dataset from yahoo Finance
+gold_prices <-  na.approx(gold_prices)
+
+#Renaming col for easier reference
+colnames(gold_prices) <- "Adjusted"
+
+#converting gold_prices to a time Series object for analysis
+gold_ts <- ts(gold_prices, start=c(year(index(gold_prices)[1]), month(index(gold_prices)[1])), frequency = 365)
+
+#Display first few rows of data
+head(gold_prices)
+```
+
+## The (Exploratory)Data Analysis conducted
+To understand the trends and patterns in gold prices, we plot the adjusted gold prices over the entire period. This visualization helps us identify any trends, seasonality, or other patterns that might influence the model. 
+```{r eda}
+# Plotting Adjusted close prices over time
+ggplot(data=as.data.frame(gold_ts), aes(x=index(gold_prices),y=Adjusted))+
+  geom_line(color="blue") +
+  labs(title="Historical Gold Prices", x ="Date", y="Adjusted close Price")+theme_minimal()
+```
+
+## More on the Analysis method selected, the ARIMA model
+To forecast future gold prices, we use the ARIMA(AutoRegressive Integrated Moving Average) model. ARIMA is a popular statistical method for time series forecasting that takes into account past values(auto-regression), differences between values to make the series stationary(integration), and past errs(moving avg).
+```{r model-building}
+#Fitting an ARIMA model to the time series datahttps://8164986952ee4ace926d3eb531d0ecf3.app.posit.cloud/graphics/cfe1ee0a-4df5-40c3-a82d-1857371732e4.png
+fit <- auto.arima(gold_ts)
+summary(fit)
+```
+
+
+## Actual forecast
+With the ARIMA model fitted, we proceed to forecast gold prices for the next 180 days(approx. 6 days). The forecast includes a central prediction(the most likely outcome) and confidence intervals that indicate the range of uncertainty in these predictions. 
+```{r forecasting}
+#Forecasting the next 180 days(6 mo) and plot them
+forecasted_values <- forecast(fit, h=180)
+plot(forecasted_values)
+```
+
+
+## Evaluating the accuracy of the forecast
+To evaluate the accuracy of our model, we analyse the residuals, which are the differences between the predicted and actual gold values. Ideally, residuals should be randomly distributed with no clear pattern(s), indicating a good fit. We also perform a statistical test to check if any patterns remain in the residuals.
+```{r residual-analysis}
+#Checking residuals to evaluate the degree of fit of the project
+checkresiduals(fit)
+```
+
+# Conclusion
+
+The ARIMA model provides a forecast for gold futures prices over the next six months. The confidence intervals suggest a reasonable level of uncertainty, indicating potential variablility  in future prices. This analysis is based on historical data and does not account for sudden market changes or unforseen events. *Note: author takes no responsibility for losses incurred via decisions made using provided analysis or any other segments of this project.*
+
